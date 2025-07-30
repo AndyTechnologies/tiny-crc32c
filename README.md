@@ -93,6 +93,39 @@ Cobertura de tests:
 * Casos límite (longitudes cero, valor inicial no nulo).
 * Validaciones internas de la tabla.
 
+## Benchmark
+
+La librería incluye un benchmark opcional para evaluar su rendimiento:
+
+```bash
+cd benchmarks
+cmake -B build -S .
+cmake --build build --config Release
+./build/tiny_crc32c_benchmark
+```
+
+### Ejemplo de salida
+
+```bash
+Benchmark CRC32C (Castagnoli polynomial)
+---------------------------------------
+Data size: 1 MiB
+Iterations: 1000
+
+Raw API:         0.35 ms / iter
+STL overload:    0.36 ms / iter
+Incremental API: 0.42 ms / iter
+```
+
+### Benchmark en tiempo de compilación
+
+```bash
+g++ -std=c++23 -ftime-report benchmark_compile.cpp -o bench
+```
+
+Esto ayuda a visualizar el impacto del `consteval` en tiempo de compilación.
+
+
 ## Contribuciones
 
 PRs bienvenidas. Mantener estilo header-only, sin deps externas.
