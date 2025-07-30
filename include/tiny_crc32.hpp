@@ -3,11 +3,15 @@
 
 namespace tcrc32{
 
-inline constexpr uint32_t __crc32_impl(
-	const uint8_t* data, 
-	std::size_t length, 
-	uint32_t init = 0
-);
+	namespace _internals{
+		inline constexpr uint32_t __crc32_impl(
+			const uint8_t* data, 
+			std::size_t length, 
+			uint32_t init = 0
+		);
+	}
+
+inline constexpr uint32_t crc32(const uint8_t* data, std::size_t length, uint32_t init = 0);
 
 // Overload for container with data() and size()
 template <typename Container>
@@ -15,7 +19,7 @@ concept STLContainer = requires(Container a) { a.data(); a.size(); };
 
 template<STLContainer Container>
 inline constexpr uint32_t crc32(const Container& c, uint32_t init = 0) {
-	return __crc32_impl(reinterpret_cast<const uint8_t*>(c.data()), c.size(), init);
+	return crc32(reinterpret_cast<const uint8_t*>(c.data()), c.size(), init);
 }
 
 // Incremental CRC32C
@@ -61,27 +65,36 @@ namespace tcrc32{
 			}
 			return table;
 		}
+		static constexpr auto CRC_TABLE{ compute() };
+
+		inline constexpr uint32_t __crc32_impl(
+			const uint8_t* data, 
+			std::size_t length, 
+			uint32_t init
+		) {
+			uint32_t crc = ~init;
+			for (std::size_t i = 0; i < length; ++i) {
+				uint8_t byte = data[i];
+				crc = CRC_TABLE[(crc ^ byte) & 0xFFu] ^ (crc >> 8);
+			}
+			return ~crc;
+		}
+
+
 	}
 
-	static constexpr auto CRC_TABLE{ _inernals::compute() };
-
-	inline constexpr uint32_t __crc32_impl(
+	inline constexpr uint32_t crc32(
 		const uint8_t* data, 
 		std::size_t length, 
-		uint32_t init = 0
-	) {
-		uint32_t crc = ~init;
-		for (std::size_t i = 0; i < length; ++i) {
-			uint8_t byte = data[i];
-			crc = CRC_TABLE[(crc ^ byte) & 0xFFu] ^ (crc >> 8);
-		}
-		return ~crc;
-	}
+		uint32_t init
+	){ return _inernals::__crc32_impl(data, length, init); }
 
-	CRC32C::CRC32C(uint32_t init = 0): crc_(~init){}
+	constexpr CRC32C::CRC32C(uint32_t init): crc_(~init){}
 	
 	inline constexpr void CRC32C::update(const uint8_t* data, std::size_t length){
-		crc_ = __crc32_impl(data, length, crc_);
+		for (std::size_t i = 0; i < length; ++i) {
+            crc_ = _inernals::CRC_TABLE[(crc_ ^ data[i]) & 0xFFu] ^ (crc_ >> 8);
+        }
 	}
 
 	inline constexpr uint32_t CRC32C::digest() const noexcept { return ~crc_; }
